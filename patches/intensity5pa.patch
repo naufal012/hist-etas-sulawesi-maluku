@@ -1,0 +1,56 @@
+--- "/d/Documents/Hierarchical ETAS/sulawesi-maluku/../HIST-PPM-V3/programs/Section13.3files5pa/intensityday2magnod5pa.f"	2026-09-02 07:38:25.980284300 +0700
++++ "/d/Documents/Hierarchical ETAS/sulawesi-maluku/run-mc50/s13/intensity5pa.f"	2026-09-03 07:46:40.005076000 +0700
+@@ -1,5 +1,5 @@
+       implicit real * 8 (a-h,o-z)
+-      parameter(ldat=22345, npa=22345, mpa=npa*5,mdl=23333)
++      parameter(ldat=3713, npa=3713, mpa=npa*5,mdl=6811)
+       common /data/ xx(ldat),yy(ldat),zz(ldat),zmg(ldat),nn
+       common /triang/ adt(mdl),ldt(mdl,3),ndt(mdl,3),np,npext,ndelo
+       common /coef/ aa(npa),bb(npa),cc(npa)
+@@ -7,7 +7,7 @@
+       dimension b(mpa),bv(npa),bv1(npa)
+       dimension xi(50000),xj(50000),xoi(50000),bvxy(50000)
+       dimension xl1(50000),xl2(50000)
+-      dimension xl(50000,60)
++c     [patch] dropped: xl() is never referenced.
+       dimension xd(3),yd(3),zd(3),zb(3)
+       dimension b1(npa),b2(npa),b4(npa),b5(npa),b7(npa)
+       dimension xx1(npa),yy1(npa),zz1(npa),zmg1(npa)
+@@ -127,6 +127,9 @@
+       rmdi=0.0
+       do 120 l=1,nn+n1
+       if(l.le.nn) then
++c     [patch] causality: a fitted event at or after the evaluation
++c     instant cannot have triggered anything observed at it.
++      if(zz(l).ge.zzz) go to 120
+       xxi=xx(l)
+       yyi=yy(l)
+       zzi=zz(l)
+@@ -170,10 +173,7 @@
+   135 continue
+ c     write(6,*) 'l1',l1,jj,zzz,zzi,rmdi,bx1
+       ramdai=bx1+rmdi
+-      if(ramdai.gt.0.9999) then
+-      write(6,*) jj,l1,i,ramdai,rmdi,b4i
+-      write(6,*) xxx,xoi(j)+xmin,yyy+ymin,zzz
+-      endif
++c     [patch] removed: printed xoi(j) with j undefined here.
+       sum=0
+       xl1(i)=log10(ramdai)
+       xl2(i)=log10(ramdai)
+@@ -200,13 +200,13 @@
+       end
+       subroutine redata(xx,yy,zz,zmg,tx,ty,tz,nn,xmin,ymin)
+       implicit real * 8 (a-h,o-z)
+-      parameter(npa=22345,nda=22345,mdl=23333,nr=020)
++      parameter(npa=3713,nda=3713,mdl=6811,nr=020)
+       parameter(npall=npa*5)
+       common /coef/ aa(nda),bb(nda),cc(nda)
+       common /triang/ adt(mdl),ldt(mdl,3),ndt(mdl,3),np,npext,ndelo
+       common /delink/ nzu(npa),iu(nr,npa)
+       common /xad/xd(npall),m
+-      common /jfun/rmax(nda),jxy(nda,nda),jnn(nda)
++c     [patch] dropped: common /jfun/ is never referenced.
+       common /approx/ xmg0
+       dimension xx(1),yy(1),zz(1),zmg(1)
+       character*8 fmt(10)

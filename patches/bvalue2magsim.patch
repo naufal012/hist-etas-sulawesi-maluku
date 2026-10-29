@@ -1,0 +1,13 @@
+--- "/d/Documents/Hierarchical ETAS/sulawesi-maluku/../HIST-PPM-V3/programs/Section15files/bvalue2magsim.f.orig"	2026-09-02 08:14:54.870216200 +0700
++++ "/d/Documents/Hierarchical ETAS/sulawesi-maluku/../HIST-PPM-V3/programs/Section15files/bvalue2magsim.f"	2026-09-02 08:14:55.016797900 +0700
+@@ -41,8 +41,8 @@
+ c
+ c
+       open(2, file='simnhPoi.data')
+-      read(2,*) npo, tx, ty amc, tpend
+-      read(2,*) ((np(i),xp(i),yp(i),cm(i),tp(i)), i=1,npo)
++      read(2,*) npo, tx, ty, amc, tpend
++      read(2,*) (np(i),xp(i),yp(i),cm(i),tp(i), i=1,npo)
+       close(2)
+ c
+       do i=1,npo

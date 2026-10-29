@@ -1,0 +1,26 @@
+--- "/d/Documents/Hierarchical ETAS/sulawesi-maluku/../HIST-PPM-V3/programs/Section10files/hist-etas5pa.f"	2026-09-02 07:38:14.898749100 +0700
++++ "/d/Documents/Hierarchical ETAS/sulawesi-maluku/src/hist-etas5pa-fixw.f"	2026-10-16 10:25:29.439928600 +0700
+@@ -1,3 +1,13 @@
++c=====================================================================
++c  hist-etas5pa-fixw: hist-etas5pa.f (HIST-PPM-V3 Section10files) with
++c  ONE change -- the ABIC simplex over the smoothness weights is
++c  replaced by a single inner solve at the weights given.  Run with
++c  init=1 and point delocoeff at a 5pa .upda whose weights have been
++c  set to the values wanted; its coefficients warm-start the solve.
++c  Used for the smoothing-sensitivity diagnostic; every other line,
++c  including the inner quasi-Newton solve and the ABIC evaluation, is
++c  the upstream code.
++c=====================================================================
+       program etaspa
+ c-----------------------------------------------------------------------
+ c  space-time version of the etas model.
+@@ -46,7 +56,8 @@
+     1 format(1h ,5f10.3/(1h ,5f10.3))
+ c  Murata's routine follows.
+ c
+-      call simplx(x, 5, funcsb, dist, eps, xm)
++c     call simplx(x, 5, funcsb, dist, eps, xm)
++      call funcsb(5, x, xm)
+       x(1)=exp(x(1)/2)
+       x(2)=exp(x(2)/2)
+       x(3)=exp(x(3)/2)
