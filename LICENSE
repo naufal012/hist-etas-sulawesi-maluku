@@ -19,10 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
---------------------------------------------------------------------------------
-Scope: this licence covers the author's own code and configurations
-(scripts/, src/, the *.conf files, the R scripts). It does not cover
-HIST-PPM-V3, which belongs to its authors and is not included; the files in
-patches/ are differences against that package and remain subject to its
-authors' terms. The catalogue in catalog/ is USGS data in the public domain.
