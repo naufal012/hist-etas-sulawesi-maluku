@@ -16,7 +16,8 @@ is Shi & Bolt (1982).
 
 Outputs figures + mc-results.json into the output directory.
 
-Usage: python mc_analysis.py <catalog.csv> <outdir> [--target-mc 6.0]
+Usage: python mc_analysis.py <catalog.csv> <outdir> [--target-mc 5.0]
+           [--first-mc 6.0] [--bbox 118 132 -6 6]
 """
 import csv, json, argparse, os, datetime
 import numpy as np
@@ -102,12 +103,21 @@ def mbs(mags, dm=DM, window=0.5):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("catalog"); ap.add_argument("outdir")
-    ap.add_argument("--target-mc", type=float, default=6.0)
+    ap.add_argument("--target-mc", type=float, default=5.0)
+    ap.add_argument("--first-mc", type=float, default=6.0,
+                    help="threshold first tried, drawn for reference (0 = none)")
+    # the USGS extract carries one stray California event (nc21364840) that
+    # tsei2etas drops, so filter to the study box as the fits do
+    ap.add_argument("--bbox", type=float, nargs=4, default=[118, 132, -6, 6],
+                    metavar=("LON0", "LON1", "LAT0", "LAT1"))
     a = ap.parse_args()
     os.makedirs(a.outdir, exist_ok=True)
 
+    lon0, lon1, lat0, lat1 = a.bbox
     rows = [r for r in csv.DictReader(open(a.catalog, encoding="utf-8"))
-            if r.get("mag") and (r.get("type") or "earthquake") == "earthquake"]
+            if r.get("mag") and (r.get("type") or "earthquake") == "earthquake"
+            and lon0 <= float(r["longitude"]) <= lon1
+            and lat0 <= float(r["latitude"]) <= lat1]
     mags = np.array([float(r["mag"]) for r in rows])
     times = np.array([datetime.datetime.fromisoformat(r["time"].replace("Z", ""))
                       for r in rows])
@@ -161,40 +171,43 @@ def main():
     ctr = edges[:-1] + DM / 2
     cum = np.array([(mags >= x - DM / 2).sum() for x in ctr], float)
 
-    fig, ax = plt.subplots(figsize=(7.0, 5.2))
-    ax.semilogy(ctr, cum, "o", ms=4.5, mfc="none", mec="#1f4e79",
-                mew=1.1, label="cumulative $N(\\geq M)$")
-    ax.semilogy(ctr, np.where(cnt > 0, cnt, np.nan), "s", ms=3.2,
-                color="#c0c0c0", mec="#909090", label="incremental")
+    # authored at its printed size (0.6 of the SN text width) so the type is
+    # 7-8 pt on the page; no title, the caption carries it
+    with plt.rc_context({"font.size": 7.5, "axes.labelsize": 8,
+                         "xtick.labelsize": 7, "ytick.labelsize": 7}):
+        fig, ax = plt.subplots(figsize=(3.1, 2.4))
+        mcs = [v for v in (res["maxc"], res["gft"].get(90), res["mbs"]) if v is not None]
+        ax.axvspan(min(mcs), max(mcs), color="#7b1fa2", alpha=.15, lw=0,
+                   label=f"completeness $M_c$ {min(mcs):.1f}–{max(mcs):.1f}")
+        ax.semilogy(ctr, cum, "o", ms=2.8, mfc="none", mec="#1f4e79",
+                    mew=.8, label="cumulative $N(\\geq M)$")
+        ax.semilogy(ctr, np.where(cnt > 0, cnt, np.nan), "s", ms=2.0,
+                    color="#c0c0c0", mec="#909090", mew=.5, label="incremental")
 
-    b_t = res["at_target"]["b"]; a_t = a_value(mags, a.target_mc, b_t)
-    xs = np.linspace(a.target_mc, mags.max(), 50)
-    ax.semilogy(xs, 10 ** (a_t - b_t * xs), "-", color="#c00000", lw=2,
-                label=f"GR fit above $M_c={a.target_mc}$  ($b={b_t:.2f}$)")
+        b_p = res["at_mc"]["b"]; a_p = a_value(mags, mc_pref, b_p)
+        xs2 = np.linspace(mc_pref, mags.max(), 50)
+        ax.semilogy(xs2, 10 ** (a_p - b_p * xs2), "--", color="#2e7d32", lw=1.1,
+                    label=f"GR fit, $M\\geq{mc_pref:.1f}$ ($b={b_p:.2f}$)")
+        b_t = res["at_target"]["b"]; a_t = a_value(mags, a.target_mc, b_t)
+        xs = np.linspace(a.target_mc, mags.max(), 50)
+        ax.semilogy(xs, 10 ** (a_t - b_t * xs), "-", color="#c00000", lw=1.3,
+                    label=f"GR fit, $M\\geq{a.target_mc:.1f}$ ($b={b_t:.2f}$)")
 
-    b_p = res["at_mc"]["b"]; a_p = a_value(mags, mc_pref, b_p)
-    xs2 = np.linspace(mc_pref, mags.max(), 50)
-    ax.semilogy(xs2, 10 ** (a_p - b_p * xs2), "--", color="#2e7d32", lw=1.6,
-                label=f"GR fit above $M_c={mc_pref:.1f}$  ($b={b_p:.2f}$)")
+        ax.axvline(a.target_mc, color="#c00000", lw=1.0)
+        ax.text(a.target_mc - .05, 1.3, f"target M {a.target_mc:.1f}", color="#c00000",
+                fontsize=6.5, rotation=90, va="bottom", ha="right")
+        if a.first_mc:
+            # in the legend: a rotated label here would sit on the squares
+            ax.axvline(a.first_mc, color="#606060", lw=.9, ls="-.",
+                       label=f"threshold first tried, M {a.first_mc:.1f}")
 
-    for v, c, lab in ((res["maxc"], "#ff8c00", "MAXC"),
-                      (res["gft"].get(90), "#2e7d32", "GFT 90%"),
-                      (res["mbs"], "#7b1fa2", "MBS")):
-        if v is not None:
-            ax.axvline(v, color=c, ls=":", lw=1.4)
-            ax.text(v, ax.get_ylim()[1] * 0.35, f" {lab}\n {v:.1f}",
-                    color=c, fontsize=7.5, rotation=90, va="top")
-    ax.axvline(a.target_mc, color="#c00000", lw=1.4, alpha=.65)
-    ax.text(a.target_mc, 1.5, " ETAS target\n threshold", color="#c00000",
-            fontsize=7.5, rotation=90, va="bottom")
-
-    ax.set_xlabel("magnitude"); ax.set_ylabel("number of events")
-    ax.set_title("Frequency–magnitude distribution, Sulawesi–Maluku 2000–2026",
-                 fontsize=10.5)
-    ax.legend(fontsize=8, frameon=False, loc="upper right")
-    ax.grid(alpha=.25, which="both", lw=.4)
-    ax.set_xlim(2.8, mags.max() + .3)
-    fig.tight_layout(); fig.savefig(f"{a.outdir}/fig-fmd.pdf"); plt.close(fig)
+        ax.set_xlabel("magnitude $M$"); ax.set_ylabel("number of events")
+        ax.legend(fontsize=6.3, frameon=False, loc="upper right",
+                  handlelength=1.8, borderaxespad=.3, labelspacing=.35)
+        ax.grid(alpha=.25, which="both", lw=.3)
+        ax.set_xlim(3.0, mags.max() + .2)
+        ax.set_ylim(.7, 6e5)
+        fig.tight_layout(pad=.3); fig.savefig(f"{a.outdir}/fig-fmd.pdf"); plt.close(fig)
 
     # =================================================================
     # Figure 2 -- b-value vs cutoff (the MBS view)
@@ -220,7 +233,7 @@ def main():
     # =================================================================
     fig, ax = plt.subplots(figsize=(7.0, 4.2))
     ax.plot(yrs, mc_y, "o-", color="#1f4e79", ms=4, lw=1.5, label="annual $M_c$ (GFT 90%)")
-    ax.axhline(a.target_mc, color="#c00000", lw=1.6, label="ETAS threshold 6.0")
+    ax.axhline(a.target_mc, color="#c00000", lw=1.6, label=f"ETAS threshold {a.target_mc:.1f}")
     ax.fill_between([min(yrs), max(yrs)], 0, a.target_mc, color="#2e7d32",
                     alpha=.07, lw=0)
     ax.set_xlabel("year"); ax.set_ylabel("$M_c$")
